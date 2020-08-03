@@ -9,6 +9,8 @@ class QueueToDataset extends React.Component {
         this.state = {
             counter : 0,
             currBid: "",
+            bidTfXValues: [],
+            bidTfYValues: [],
             queue:      
             // Mocked data for queue
             // (JavaScript does not have built-in queue type)
@@ -103,6 +105,82 @@ class QueueToDataset extends React.Component {
         };
     }
 
+    incrementCount(state, props) {
+        return {...state, counter: state.counter + 1};
+    }
+
+    stateSet = () => {
+        this.setState(
+            this.incrementCount,
+            // { 
+            //     counter: this.state.counter + 1},
+            () => {
+                console.log(this.state.counter)
+                this.processBidData();
+            }
+        ); 
+        
+    }
+
+    processBidData = () => {
+        
+        if (this.state.queue.length == 0){
+            return;
+        }
+        var queueUpdated = this.state.queue.slice();
+        var bidData = queueUpdated.shift();
+        console.log(bidData);
+        // mediaType, win/lose, width, height, cpm
+        var bidRow = [];
+        // check first three because these need to be 
+        // manually added
+        var add = true;
+        if (!("bidfloor" in bidData)) {
+            alert("bid doesn't have bidfloor key");
+            add = false;
+        }
+        if (!("mediaType" in bidData)) {
+            alert("bid doesn't have mediaType key");
+            add = false;
+        } else {
+            switch(bidData["mediaType"]) {
+                case "banner":
+                    bidRow[0] = 0;
+                    break;
+                case "video":
+                    bidRow[0] = 1;
+                    break;
+                default:
+                    bidRow[0] = 2;
+            }
+        }
+        if (!"win" in bidData) {
+            alert("bid doesn't have win key");
+            add = false;
+        } else {
+            if (bidData["win"]) {
+                bidRow[1] = 1;
+            } else {
+                bidRow[1] = 0;
+            }
+        }
+        if (add) {
+            bidRow[2] = bidData["width"];    
+            bidRow[3] = bidData["height"];    
+            bidRow[4] = bidData["cpm"];   
+            var newXvals = this.state.bidTfXValues.slice();
+            var newYvals = this.state.bidTfYValues.slice();
+            newXvals[newXvals.length] = bidRow;
+            newYvals[newYvals.length] = bidData["bidfloor"]; 
+            this.setState({
+                bidTfXValues : newXvals,
+                bidTfYValues : newYvals,
+                queue: queueUpdated,
+
+            });
+        }
+        this.stateSet();
+    }
     /*
     * @param queue, a queue of bid data
     * @return 2D-lists of data to be used with TensorFlow.js
@@ -110,68 +188,38 @@ class QueueToDataset extends React.Component {
     * Referenced: https://js.tensorflow.org/api/latest/#tensor
     */ 
     convertToTfData() {
-        // control for mediaType to get a better model
-        var bidTfXValues = [];
-        var bidTfYValues = [];
-        for (let bidData of this.state.queue) {
-            console.log(bidData);
-            // mediaType, win/lose, width, height, cpm
-            var bidRow = [];
-            // check first three because these need to be 
-            // manually added
-            if (!("bidfloor" in bidData)) {
-                alert("bid doesn't have bidfloor key");
-                continue;
-            }
-            if (!("mediaType" in bidData)) {
-                alert("bid doesn't have mediaType key");
-                continue;
-            } else {
-                switch(bidData["mediaType"]) {
-                    case "banner":
-                        bidRow[0] = 0;
-                        break;
-                    case "video":
-                        bidRow[0] = 1;
-                        break;
-                    default:
-                        bidRow[0] = 2;
-                }
-            }
-            if (!"win" in bidData) {
-                alert("bid doesn't have win key");
-                continue;
-            } else {
-                if (bidData["win"]) {
-                    bidRow[1] = 1;
-                } else {
-                    bidRow[1] = 0;
-                }
-            }
-            bidRow[2] = bidData["width"];    
-            bidRow[3] = bidData["height"];    
-            bidRow[4] = bidData["cpm"];   
-            bidTfXValues[bidTfXValues.length] = bidRow
-            bidTfYValues[bidTfYValues.length] = bidData["bidfloor"]; 
-            
-            this.setState(
-                {counter: this.state.counter + 1,
-                currBid: bidData["mediaType"],
-                }, 
-                () => console.log(this.state.counter + this.state.currBid)
-            );
-            console.log("reached set state");
+        console.log("calling fn");
+        console.log("WHy is this ");
+        this.processBidData();
+    }
+    displayX() {
+        if (this.state.queue.length == 0){
+            return <h2>X values</h2>;
         }
-        return (bidTfXValues, bidTfYValues); 
+    }
+    displayY() {
+        if (this.state.queue.length == 0){
+            return <h2>Y values</h2>;
+        }
     }
   
     render() {
         return (
             <div>
+                <h2>Technical Test: Alice Marbach</h2>
                 <button onClick={() => this.convertToTfData()}></button>
                 <h1>
                     {this.state.counter}
-                    {this.state.currBid}
+                    {this.displayX()}
+                    {this.state.bidTfXValues.map(item => {
+                    return <li key={item} >{"X" + item}</li>;
+                    })}
+                    <ul>
+                    {this.displayY()}
+                    {this.state.bidTfYValues.map(item => {
+                    return <li key={item} >{item}</li>;
+                    })}
+                    </ul>
                 </h1>
             </div>
             
